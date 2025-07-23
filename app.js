@@ -2,6 +2,10 @@ const path = require('path');
 
 const express = require('express');
 const bodyParser = require('body-parser');
+const session = require('express-session');
+
+// initalize sequelize with session store
+var SequelizeStore = require("connect-session-sequelize")(session.Store);
 
 const errorController = require('./controllers/error');
 const sequelize = require('./util/database');
@@ -19,11 +23,27 @@ app.set('views', 'views');
 
 const adminRoutes = require('./routes/admin');
 const shopRoutes = require('./routes/shop');
+const authRoutes = require('./routes/auth');
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(
+  session({
+    secret: 'my secret',
+    resave: false,
+    saveUninitialized: false,
+    store: new SequelizeStore({
+      db: sequelize,
+      checkExpirationInterval: 15 * 60 * 1000, // The interval at which to cleanup expired sessions in milliseconds.
+      expiration: 24 * 60 * 60 * 1000  // The maximum age (in milliseconds) of a valid session.
+    }),
+  })
+);
 
 app.use((req, res, next) => {
+  if (!req.session.user) {
+    return next();
+  }
   User.findByPk(1)
     .then(user => {
       req.user = user;
@@ -34,6 +54,7 @@ app.use((req, res, next) => {
 
 app.use('/admin', adminRoutes);
 app.use(shopRoutes);
+app.use(authRoutes);
 
 app.use(errorController.get404);
 

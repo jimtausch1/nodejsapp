@@ -2,8 +2,6 @@ const mysql = require('mysql2');
 
 const Sequelize = require('sequelize');
 
-
-
 const pool = mysql.createPool({
     host: 'localhost',
     user: 'restadmin',
