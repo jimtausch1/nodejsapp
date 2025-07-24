@@ -3,6 +3,8 @@ const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const csrf = require('csurf');
+const flash = require('connect-flash');
 
 // initalize sequelize with session store
 var SequelizeStore = require("connect-session-sequelize")(session.Store);
@@ -17,6 +19,8 @@ const Order = require('./models/order');
 const OrderItem = require('./models/order-item');
 
 const app = express();
+
+const csrfProtection = csrf();
 
 app.set('view engine', 'ejs');
 app.set('views', 'views');
@@ -40,6 +44,9 @@ app.use(
   })
 );
 
+app.use(csrfProtection);
+app.use(flash());
+
 app.use((req, res, next) => {
   if (!req.session.user) {
     return next();
@@ -50,6 +57,12 @@ app.use((req, res, next) => {
       next();
     })
     .catch(err => console.log(err));
+});
+
+app.use((req, res, next) => {
+  res.locals.isAuthenticated = req.session.isLoggedIn;
+  res.locals.csrfToken = req.csrfToken();
+  next();
 });
 
 app.use('/admin', adminRoutes);
@@ -76,14 +89,10 @@ sequelize
     // console.log(result);
   })
   .then(user => {
-    if (!user) {
-      return User.create({ name: 'Max', email: 'test@test.com' });
-    }
-    return user;
-  })
-  .then(user => {
     // console.log(user);
-    return user.createCart();
+    if (user) {
+      return user.createCart();
+    }
   })
   .then(cart => {
     app.listen(3000);
